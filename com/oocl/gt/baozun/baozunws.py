@@ -122,11 +122,28 @@ if __name__ == '__main__':
     import time
 
     url = 'https://hub-test.baozun.cn/web-service/warehouse/1.0?wsdl'
-    b=BaozunWebService(url=url,cus='WH_OCL',key='abcdef',sign='123456')
-    start=time.time()
-    (req,rep)=b.pull_sales_order('2018-05-10 00:00:00','2018-05-10 14:00:00',100,50)
-    end=time.time()
-    print end-start
+    b = BaozunWebService(url=url, cus='WH_OCL', key='abcdef', sign='123456')
+    start = time.time()
+    ##################pull####################
+    (req, rep) = b.pull_sku('2018-04-10 00:00:00', '2018-05-10 14:00:00', 1, 50)
+    # (req,rep)=b.pull_asn('2018-04-10 00:00:00','2018-05-10 14:00:00',1,50)
+    # (req,rep)=b.pull_spo('2018-05-01 00:00:00','2018-05-10 14:00:00',1,50)
+    # (req,rep)=b.pull_sales_order('2018-05-01 00:00:00','2018-05-10 00:00:00',1,50)
+
+    ##################push###################
+    gr = r'{"warehouseCode": "WH_OOCL", "uuid": "1", "orderCode": "", "lines": [{"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}], "inboundTime": "20180507141701", "extMemo": "", "type": "1"}'
+    # (req, rep) = b.push_gr(data)
+    # (req, rep) = b.push_inv_change(data)
+    # (req, rep) = b.push_inv_status_change(gr)data
+
+    do = r'{"warehouseCode": "WH_OCL", "uuid": "1", "orderCode": "R600087181359", "trackingNo": "66655555", "lines": [{"skuCode": "nike49151918999", "cartonNo": "", "expDate": "", "qty": 1, "invStatus": "accepted", "extMemo": ""}], "snLines": [], "lpCode": "SF", "extMemo": "", "outboundTime": "2018-05-02 14:11:55", "type": "10"}'
+    do_sales = r'{"transNos": "", "warehouseCode": "WH_OCL", "uuid": "1", "orderCode": "S600087181165", "trackingNo": "444034512959", "lines": [{"extMemo": "", "qty": 1, "invStatus": "accepted", "expDate": "", "skuCode": "nike49151918999"}], "weight": 25.3, "materialSkus": "", "snLines": [], "lpCode": "SF", "extMemo": "", "outboundTime": "2018-05-02 11:41:01", "type": "21"}'
+
+    # (req, rep) = b.push_do(do)
+    (req, rep) = b.push_sales_do(do_sales)
+
+    end = time.time()
+    print end - start
     # b = BaozunWebService(url=url, cus='WH_OCL', key='abcdef', sign='123456')
     # start = time.time()
     # x = b.get_spo_sales('2018-05-10 00:00:00', '2018-05-10 19:00:00', 100, 50)
