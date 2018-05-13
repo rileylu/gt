@@ -120,18 +120,26 @@ class BaozunWebService:
 
 if __name__ == '__main__':
     import time
+    import json
 
     url = 'https://hub-test.baozun.cn/web-service/warehouse/1.0?wsdl'
     b = BaozunWebService(url=url, cus='WH_OCL', key='abcdef', sign='123456')
     start = time.time()
     ##################pull####################
-    (req, rep) = b.pull_sku('2018-04-10 00:00:00', '2018-05-10 14:00:00', 1, 50)
+    # (req, rep) = b.pull_sku('2018-04-10 00:00:00', '2018-05-10 14:00:00', 1, 50)
     # (req,rep)=b.pull_asn('2018-04-10 00:00:00','2018-05-10 14:00:00',1,50)
     # (req,rep)=b.pull_spo('2018-05-01 00:00:00','2018-05-10 14:00:00',1,50)
-    # (req,rep)=b.pull_sales_order('2018-05-01 00:00:00','2018-05-10 00:00:00',1,50)
+    try:
+        (req, rep) = b.pull_sales_order('2018-05-01 13:55:00', '2018-05-10 13:00:00', 1, 50)
+        rep=json.loads(rep)['message']
+        if 'errorCode' in rep:
+            print rep['msg']
+        pass
+    except Exception as e:
+        print e.message
 
     ##################push###################
-    gr = r'{"warehouseCode": "WH_OOCL", "uuid": "1", "orderCode": "", "lines": [{"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}], "inboundTime": "20180507141701", "extMemo": "", "type": "1"}'
+    # gr = r'{"warehouseCode": "WH_OOCL", "uuid": "1", "orderCode": "", "lines": [{"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}, {"qty": 2, "invStatus": "accepted", "skuCode": ""}], "inboundTime": "20180507141701", "extMemo": "", "type": "1"}'
     # (req, rep) = b.push_gr(data)
     # (req, rep) = b.push_inv_change(data)
     # (req, rep) = b.push_inv_status_change(gr)data
@@ -140,7 +148,7 @@ if __name__ == '__main__':
     do_sales = r'{"transNos": "", "warehouseCode": "WH_OCL", "uuid": "1", "orderCode": "S600087181165", "trackingNo": "444034512959", "lines": [{"extMemo": "", "qty": 1, "invStatus": "accepted", "expDate": "", "skuCode": "nike49151918999"}], "weight": 25.3, "materialSkus": "", "snLines": [], "lpCode": "SF", "extMemo": "", "outboundTime": "2018-05-02 11:41:01", "type": "21"}'
 
     # (req, rep) = b.push_do(do)
-    (req, rep) = b.push_sales_do(do_sales)
+    # (req, rep) = b.push_sales_do(do_sales)
 
     end = time.time()
     print end - start

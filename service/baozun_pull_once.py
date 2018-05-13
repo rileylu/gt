@@ -19,7 +19,7 @@ class BaozunException(Exception):
 class BaozunPullOnce(Service):
     class SimpleIO:
         input_required = ('type', 'startTime', 'endTime', 'pageSize', 'page')
-        output_required = ('total',)
+        output_required = ('total', 'message')
 
     def __init__(self):
         Service.__init__(self)
@@ -50,16 +50,17 @@ class BaozunPullOnce(Service):
                 self._rep_req_logger.info(req)
                 self._rep_req_logger.info(rep)
                 rep = json.loads(rep)
-                rep = json.loads(rep['message'])
-                if 'errorCode' in rep:
+                msg = json.loads(rep['message'])
+                if 'errorCode' in msg:
                     if retry_count > 0:
                         retry_count -= 1
                         time.sleep(3)
                     else:
                         raise BaozunException(
-                            'CALLING BAOZUN SERVICE WITH ERROR: (%s,%s)' % (rep['errorCode'], rep['msg']))
+                            'CALLING BAOZUN SERVICE WITH ERROR: (%s,%s)' % (msg['errorCode'], msg['msg']))
                 else:
                     self.response.payload.total = rep['total']
+                    self.response.payload.msg = rep['message']
                     return
         except Exception as e:
             raise BaozunException('CALLING BAOZUN SERVICE WITH ERROR: %s' % e.message)
