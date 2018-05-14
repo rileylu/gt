@@ -130,7 +130,7 @@ if __name__ == '__main__':
     # (req,rep)=b.pull_asn('2018-04-10 00:00:00','2018-05-10 14:00:00',1,50)
     # (req,rep)=b.pull_spo('2018-05-01 00:00:00','2018-05-10 14:00:00',1,50)
     try:
-        (req, rep) = b.pull_sales_order('2018-05-01 13:55:00', '2018-05-10 13:00:00', 1, 50)
+        (req, rep) = b.pull_sales_order('2018-05-01 13:55:00', '2018-05-11 14:00:00', 1, 50)
         rep=json.loads(rep)['message']
         if 'errorCode' in rep:
             print rep['msg']
