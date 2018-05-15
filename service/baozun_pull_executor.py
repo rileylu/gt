@@ -1,14 +1,16 @@
 from datetime import datetime, timedelta
 from math import ceil, floor
 
-from concurrent import futures
 from zato.server.service import Service
+import threading
 
+from com.oocl.gt.baozun.baozunws import *
 from com.oocl.gt.baozun.baozunpull import *
 from com.oocl.gt.util.servicelock import ServiceLock
 
 dt_format = '%Y-%m-%d %H:%M:%S'
 dmtp_service = 'dmtpservice.dmtp-service'
+logfile_service = 'logfile.log-file'
 
 config = {
     'url': 'https://hub-test.baozun.cn/web-service/warehouse/1.0?wsdl',
@@ -22,8 +24,8 @@ config = {
     'customer': 'WH_OCL',
     'key': 'abcdef',
     'sign': '123456',
-    'pageSize': 10,
-    'thread_count': 3,
+    'pageSize': 2,
+    'thread_count': 4,
     'last_time':
         {
             'ASN': 'ASN_LAST_TIME',
@@ -52,40 +54,48 @@ class BaozunCronExecutor:
             {'startTime': st, 'endTime': et, 'page': 1, 'pageSize': 1})
         rep_json = json.loads(rep)
         total = rep_json['total']
+        self.service.logger.info('<startTime:%s , endTime:%s , total:%d>' % (st, et, total))
         if total > 0:
             if total >= config['pageSize'] * config['thread_count']:
-                batchPull = BaozunBatchPull(baozunWS=baozunWS, order_type='ASN')
+                self.service.logger.info('start multiple thread')
+                batchPull = BaozunBatchPull(baozunWS=baozunWS, order_type=order_type)
                 ttlPages = int(ceil(total / config['pageSize']))
                 s = int(floor(ttlPages / config['thread_count']))
                 rg = range(1, ttlPages, s)
                 rg[-1] = ttlPages + 1
-                with futures.ProcessPoolExecutor(max_workers=config['thread_count']) as exe:
-                    i = 1
-                    fs = []
-                    while i < len(rg):
-                        f = exe.submit(fn=self._run, batchPull=batchPull, startTime=st, endTime=et,
-                                       pages=range(rg[i - 1], rg[i]),
-                                       pageSize=config['pageSize'], order_type=order_type)
-                        fs.append(f)
-                        i += 1
-                    for f in fs:
-                        f.result()
+                tds = []
+                i = 1
+                while i < len(rg):
+                    td = threading.Thread(target=self._run, args=(
+                        batchPull, st, et, range(rg[i - 1], rg[i]), config['pageSize'], order_type))
+                    td.start()
+                    tds.append(td)
+                    i += 1
+                for td in tds:
+                    td.join()
             else:
                 req, rep = pull.run({'startTime': st, 'endTime': et, 'page': 1, 'pageSize': total})
                 msg = json.loads(rep)['entry']
                 self._call_dmtp(uri=config['dmtpUrl'][order_type], data=msg)
+                self._write_to_file('%s_%s' % (st, et), msg)
             self.service.kvdb.conn.set(config['last_time'][order_type], et)
 
     def _call_dmtp(self, uri, data):
-        return self.service.async_invoke(dmtp_service, {'url': config['dmtpServer'] + uri, 'data': data})
+        self.service.invoke_async(dmtp_service, {'url': '%s%s' % (config['dmtpServer'], uri), 'data': data})
 
-    def _run(self, batchPull, startTime, endTime, pages, pageSize, orderType):
-        (msgs, failed, total) = batchPull.run(
+    def _write_to_file(self, fn, data):
+        self.service.invoke_async(logfile_service, {'path': fn, 'data': data, 'type': 'json'})
+
+    def _run(self, batchPull, startTime, endTime, pages, pageSize, order_type):
+        self.service.logger.info('<startTime:%s,endTime:%s,pages:%s,pagesize:%s,ordertype:%s>' % (
+            startTime, endTime, json.dumps(pages), pageSize, order_type))
+        (msgs, failed) = batchPull.run(
             {'startTime': startTime, 'endTime': endTime, 'pages': pages, 'pageSize': pageSize})
+        for msg in msgs:
+            self._call_dmtp(uri=config['dmtpUrl'][order_type], data=msg)
+            self._write_to_file('%s_%s' % (startTime, endTime), msg)
         if len(failed) > 0:
             raise Exception('failed orders: %s', json.dumps(failed))
-        for msg in msgs:
-            self._call_dmtp(uri=config['dmtpUrl'][orderType], data=msg)
 
 
 class BaozunPullASN(Service):

@@ -46,6 +46,7 @@ class BaozunBatchPull(BaozunPull):
         failed = []
         msgs = []
         for p in param['pages']:
+            self.logger.info('<startTime:%s , endTime:%s , page:%d , pageSize:%d>'%(param['startTime'],param['endTime'],p,param['pageSize']))
             (req, rep) = self.service(startTime=param['startTime'], endTime=param['endTime'], page=int(p),
                                       pageSize=param['pageSize'])
             rep_json = json.loads(rep)
@@ -55,7 +56,6 @@ class BaozunBatchPull(BaozunPull):
                 failed.append(p)
             else:
                 msgs.append(rep_json['message'])
-                total = msg['total']
         return msgs, failed
 
 
