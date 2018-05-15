@@ -1,4 +1,3 @@
-from com.oocl.gt.baozun.baozunws import BaozunWebService
 from abc import abstractmethod, ABCMeta
 import logging
 import json
@@ -11,13 +10,13 @@ class BaozunPullException(Exception):
 class BaozunPull:
     __metaclass__ = ABCMeta
 
-    def __init__(self, url, customer, key, sign, order_type):
-        ws = BaozunWebService(url=url, cus=customer, key=key, sign=sign)
+    def __init__(self, baozunWS, order_type):
+        self._baozunWS = baozunWS
         service = {
-            "ASN": ws.pull_asn,
-            "ITEM": ws.pull_sku,
-            "SPO": ws.pull_spo,
-            "SPO_SALES": ws.pull_sales_order
+            "ASN": self._baozunWS.pull_asn,
+            "ITEM": self._baozunWS.pull_sku,
+            "SPO": self._baozunWS.pull_spo,
+            "SPO_SALES": self._baozunWS.pull_sales_order
         }
         if order_type not in service:
             raise BaozunPullException("ORDER_TYPE %s IS NOT DEFINED")
@@ -46,32 +45,34 @@ class BaozunBatchPull(BaozunPull):
     def run(self, param):
         failed = []
         msgs = []
-        total = None
         for p in param['pages']:
             (req, rep) = self.service(startTime=param['startTime'], endTime=param['endTime'], page=int(p),
                                       pageSize=param['pageSize'])
             rep_json = json.loads(rep)
             msg = json.loads(rep_json['message'])
-            total = msg['total']
             if 'errorCode' in msg:
                 self.logger.warn(msg['msg'])
                 failed.append(p)
             else:
                 msgs.append(rep_json['message'])
-        return msgs, failed, total
+                total = msg['total']
+        return msgs, failed
 
 
 if __name__ == '__main__':
+    from com.oocl.gt.baozun.baozunws import BaozunWebService
+
     url = 'https://hub-test.baozun.cn/web-service/warehouse/1.0?wsdl'
+    baozunWS = BaozunWebService(url=url, cus='WH_OCL', key='abcdef', sign='123456')
     # b = BaozunPullOnce(url=url, customer='WH_OCL', key='abcdef', sign='123456', order_type='SPO_SALES')
-    bb = BaozunBatchPull(url=url, customer='WH_OCL', key='abcdef', sign='123456', order_type='SPO_SALES')
+    bb = BaozunBatchPull(baozunWS=baozunWS, order_type='SPO_SALES')
     param = {
         'startTime': '2018-05-10 14:00:00',
         'endTime': '2018-05-10 14:05:00',
-        'pages': [1, 2, 3],
-        'pageSize': 100
+        'pages': [1],
+        'pageSize': 1
     }
     # (req, rep) = b.run(param)
-    msgs, failed, = bb.run(param)
+    msgs, failed = bb.run(param)
 
     pass

@@ -32,13 +32,13 @@ class BaozunPullOnce:
     def __init__(self, order_type):
         self.ws = BaozunWebService(url=config['url'], cus=config['customer'], key=config['key'], sign=config['sign'])
         self.order_type = order_type
-        self._rep_req_logger = logging.getLogger('repreq')
+        self.logger = logging.getLogger('repreq')
 
     def run(self, startTime, endTime, page, pageSize):
         service = {
             'ASN': self.ws.pull_asn,
             'SPO': self.ws.pull_spo,
-            'SALES_SPO': self.ws.pull_sales_order,
+            'SPO_SALES': self.ws.pull_sales_order,
             'ITEM': self.ws.pull_sku
         }
         if self.order_type not in service:
@@ -48,8 +48,8 @@ class BaozunPullOnce:
             retry_count = 3
             while retry_count > 0:
                 (req, rep) = service(startTime=startTime, endTime=endTime, page=page, pageSize=pageSize)
-                self._rep_req_logger.info(req)
-                self._rep_req_logger.info(rep)
+                self.logger.info(req)
+                self.logger.info(rep)
                 rep = json.loads(rep)
                 msg = json.loads(rep['message'])
                 if 'errorCode' in msg:
@@ -65,7 +65,7 @@ class BaozunPullOnce:
             raise BaozunException('CALLING BAOZUN SERVICE WITH ERROR: %s' % e.message)
 
 
-class BaozunPullWorkerService(Service):
+class BaozunBatchPull(Service):
     class SimpleIO:
         input_required = ('startTime', 'endTime', 'pages', 'pageSize', 'type')
         output_required = ('failed',)
@@ -75,8 +75,8 @@ class BaozunPullWorkerService(Service):
         endTime = self.request.input.endTime
         pages = json.loads(self.request.input.pages)
         pageSize = int(self.request.input.pageSize)
-        service = self.request.input.type
-        run_once = BaozunPullOnce(service)
+        orderType = self.request.input.type
+        run_once = BaozunPullOnce(orderType)
         self.response.payload.failed = []
         for p in pages:
             p = int(p)
