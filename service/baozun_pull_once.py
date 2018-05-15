@@ -49,7 +49,7 @@ class BaozunPullOnce(Service):
                 (req, rep) = service(startTime=startTime, endTime=endTime, page=page, pageSize=pageSize)
                 self._rep_req_logger.info(req)
                 self._rep_req_logger.info(rep)
-                rep = json.loads(rep)
+                rep=json.loads(rep)
                 msg = json.loads(rep['message'])
                 if 'errorCode' in msg:
                     if retry_count > 0:
@@ -59,8 +59,8 @@ class BaozunPullOnce(Service):
                         raise BaozunException(
                             'CALLING BAOZUN SERVICE WITH ERROR: (%s,%s)' % (msg['errorCode'], msg['msg']))
                 else:
-                    self.response.payload.total = rep['total']
-                    self.response.payload.msg = rep['message']
+                    self.response.payload.total = msg['total']
+                    self.response.payload.message= rep
                     return
         except Exception as e:
-            raise BaozunException('CALLING BAOZUN SERVICE WITH ERROR: %s' % e.message)
+            raise
