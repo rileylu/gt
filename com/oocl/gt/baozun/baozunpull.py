@@ -46,6 +46,7 @@ class BaozunBatchPull(BaozunPull):
     def run(self, param):
         failed = []
         msgs = []
+        total = None
         for p in param['pages']:
             (req, rep) = self.service(startTime=param['startTime'], endTime=param['endTime'], page=int(p),
                                       pageSize=param['pageSize'])
