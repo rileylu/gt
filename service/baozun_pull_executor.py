@@ -97,10 +97,10 @@ class BaozunCronExecutor:
             success = True
             if total >= pageSize * thread_count:
                 self.service.logger.info('start multiple thread')
-                ttlPages = int(ceil(total / pageSize))
-                s = int(floor(ttlPages / thread_count))
+                ttlPages = int(ceil(float(total) / pageSize))
+                s = int(floor(float(ttlPages) / thread_count))
                 rg = range(1, ttlPages, s)
-                rg[-1] = ttlPages + 1
+                rg.append(ttlPages+1)
                 i = 1
                 tds = []
                 while i < len(rg):
