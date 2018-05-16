@@ -20,6 +20,7 @@ class BaozunPushExecutor(Service):
         input_required = ('order_type',)
 
     def handle(self):
+        import httplib
         baozunWS = BaozunWebService(url=config['url'], cus=config['customer'], key=config['key'], sign=config['sign'])
         bp = BaozunPush(baozunWS, self.request.input.order_type)
         try:
@@ -27,8 +28,10 @@ class BaozunPushExecutor(Service):
             payload = json.dumps(self.request.payload)
             (req, rep) = bp.run(payload)
             self._write_to_file(datetime.now().strftime(fn_format), self.request.input.order_type, rep)
+            self.response.status_code=httplib.OK
         except Exception, e:
             self.logger.warn(e.message)
+            self.response.status_code=httplib.BAD_REQUEST
 
     def _write_to_file(self, dt, orderType, data):
         data = json.dumps(json.loads(data))
