@@ -93,8 +93,8 @@ class BaozunCronExecutor:
         rep_json = json.loads(rep)
         total = rep_json['total']
         self.service.logger.info('<startTime:%s , endTime:%s , total:%d>' % (st, et, total))
-        success = True
         if total > 0:
+            success = True
             if total >= pageSize * thread_count:
                 self.service.logger.info('start multiple thread')
                 ttlPages = int(ceil(total / pageSize))
@@ -122,6 +122,7 @@ class BaozunCronExecutor:
                     success = False
             if success:
                 return success
+        return False
 
 
 class BaozunPullASN(Service):
