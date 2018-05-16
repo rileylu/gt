@@ -4,6 +4,7 @@ from zeep.transports import Transport
 from Crypto.Cipher import AES
 import hashlib
 import base64
+import logging
 
 BLOCK_SIZE = 16
 pad = lambda s: s + (BLOCK_SIZE - len(s) % BLOCK_SIZE) * \
@@ -73,6 +74,7 @@ class BaozunWebService:
         self.key = key
         self.sign = sign
         self.crypt = BaozunWebService.BaozunCrypt(key)
+        self.logger = logging.getLogger('repreq')
 
     def _do_pull(self, startTime, endTime, page, pageSize, fun):
         import json
@@ -80,14 +82,18 @@ class BaozunWebService:
         data = json.dumps(data)
         sign = md5('%s%s%s' % (self.cus, data, self.sign))
         message = self.crypt.encrypt(data)
+        self.logger.info(message)
         r = fun(customer=self.cus, sign=sign, message=message)
+        self.logger.info(r)
         return data, self.crypt.decrypt(r)
 
     def _do_push(self, data, fun):
         data = str(data).encode('unicode_escape')
         sign = md5('%s%s%s' % (self.cus, data, self.sign))
         message = self.crypt.encrypt(data)
+        self.logger.info(message)
         r = fun(customer=self.cus, sign=sign, message=message)
+        self.logger.info(r)
         return data, self.crypt.decrypt(r)
 
     def pull_asn(self, startTime, endTime, page, pageSize):
@@ -131,7 +137,7 @@ if __name__ == '__main__':
     # (req,rep)=b.pull_spo('2018-05-01 00:00:00','2018-05-10 14:00:00',1,50)
     try:
         (req, rep) = b.pull_sales_order('2018-05-01 13:55:00', '2018-05-11 14:00:00', 1, 50)
-        rep=json.loads(rep)['message']
+        rep = json.loads(rep)['message']
         if 'errorCode' in rep:
             print rep['msg']
         pass
