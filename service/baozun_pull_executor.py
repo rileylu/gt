@@ -11,6 +11,7 @@ from com.oocl.gt.baozun.baozunpull import *
 from com.oocl.gt.util.servicelock import ServiceLock
 
 dt_format = '%Y-%m-%d %H:%M:%S'
+fn_format = '%Y%m%d%H%M%S'
 dmtp_service = 'dmtpservice.dmtp-service'
 logfile_service = 'logfile.log-file'
 
@@ -59,7 +60,7 @@ class BaozunCronExecutor:
                     req, rep = self.pull.run(
                         {'startTime': self.startTime, 'endTime': self.endTime, 'page': p, 'pageSize': self.pageSize})
                     self._call_dmtp(uri=config['dmtpUrl'][self.orderType], data=rep)
-                    self._write_to_file('%s_%s_%s_%d' % (self.orderType, self.startTime, self.endTime, p), rep)
+                    self._write_to_file(self.startTime, self.endTime, p, self.orderType, rep)
             except Exception, e:
                 self.exitcode = 1
                 self.exception = e
@@ -69,20 +70,21 @@ class BaozunCronExecutor:
             data = json.dumps(json.loads(data))
             self.service.invoke(dmtp_service, {'url': '%s%s' % (config['dmtpServer'], uri), 'data': data})
 
-        def _write_to_file(self, fn, data):
+        def _write_to_file(self, startTime, endTime, page, orderType, data):
+            st = datetime.strptime(startTime, dt_format).strftime(fn_format)
+            et = datetime.strptime(endTime, dt_format).strftime(fn_format)
             data = json.dumps(json.loads(data))
-            self.service.invoke_async(logfile_service, {'path': fn, 'data': data, 'type': 'json'})
+            self.service.invoke_async(logfile_service,
+                                      {'path': '%s_%s_%s_%d' % (orderType, st, et, page), 'data': data, 'type': 'json'})
 
     def __init__(self, service):
         self.service = service
 
-    def run(self, order_type):
+    def run(self, startTime, endTime, pageSize, thread_count, order_type):
         if order_type not in config['last_time']:
             raise Exception('ORDER TYPE %s IS NOT DEFINED' % order_type)
-        st = self.service.kvdb.conn.get(config['last_time'][order_type])
-        if st is None:
-            st = (datetime.now() - timedelta(days=1)).strftime(dt_format)
-        et = datetime.now().strftime(dt_format)
+        st = startTime
+        et = endTime
         baozunWS = BaozunWebService(url=config['url'], cus=config['customer'], key=config['key'],
                                     sign=config['sign'])
         pull = BaozunPullOnce(baozunWS=baozunWS, order_type=order_type)
@@ -93,16 +95,16 @@ class BaozunCronExecutor:
         self.service.logger.info('<startTime:%s , endTime:%s , total:%d>' % (st, et, total))
         success = True
         if total > 0:
-            if total >= config['pageSize'] * config['thread_count']:
+            if total >= pageSize * thread_count:
                 self.service.logger.info('start multiple thread')
-                ttlPages = int(ceil(total / config['pageSize']))
-                s = int(floor(ttlPages / config['thread_count']))
+                ttlPages = int(ceil(total / pageSize))
+                s = int(floor(ttlPages / thread_count))
                 rg = range(1, ttlPages, s)
                 rg[-1] = ttlPages + 1
                 i = 1
                 tds = []
                 while i < len(rg):
-                    td = BaozunCronExecutor.BatchRunThread(pull, st, et, range(rg[i - 1], rg[i]), config['pageSize'],
+                    td = BaozunCronExecutor.BatchRunThread(pull, st, et, range(rg[i - 1], rg[i]), pageSize,
                                                            order_type, self.service)
                     td.start()
                     tds.append(td)
@@ -119,15 +121,21 @@ class BaozunCronExecutor:
                     self.service.logger.warn(td.exception.message)
                     success = False
             if success:
-                self.service.kvdb.conn.set(config['last_time'][order_type], et)
+                return success
 
 
 class BaozunPullASN(Service):
     def handle(self):
         try:
             with ServiceLock(self):
+                st = self.kvdb.conn.get(config['last_time']['ASN'])
+                if st is None:
+                    st = (datetime.now() - timedelta(days=1)).strftime(dt_format)
+                et = datetime.now().strftime(dt_format)
                 executor = BaozunCronExecutor(service=self)
-                executor.run('ASN')
+                res = executor.run(st, et, config['pageSize'], config['thread_count'], 'ASN')
+                if res:
+                    self.kvdb.conn.set(config['last_time']['ASN'], et)
         except Exception, e:
             self.logger.error(e.message)
 
@@ -137,8 +145,14 @@ class BaozunPullSPO(Service):
     def handle(self):
         try:
             with ServiceLock(self):
+                st = self.kvdb.conn.get(config['last_time']['SPO'])
+                if st is None:
+                    st = (datetime.now() - timedelta(days=1)).strftime(dt_format)
+                et = datetime.now().strftime(dt_format)
                 executor = BaozunCronExecutor(service=self)
-                executor.run('SPO')
+                res = executor.run(st, et, config['pageSize'], config['thread_count'], 'SPO')
+                if res:
+                    self.kvdb.conn.set(config['last_time']['SPO'], et)
         except Exception, e:
             self.logger.error(e.message)
 
@@ -148,8 +162,14 @@ class BaozunPullITEM(Service):
     def handle(self):
         try:
             with ServiceLock(self):
+                st = self.kvdb.conn.get(config['last_time']['ITEM'])
+                if st is None:
+                    st = (datetime.now() - timedelta(days=1)).strftime(dt_format)
+                et = datetime.now().strftime(dt_format)
                 executor = BaozunCronExecutor(service=self)
-                executor.run('ITEM')
+                res = executor.run(st, et, config['pageSize'], config['thread_count'], 'ITEM')
+                if res:
+                    self.kvdb.conn.set(config['last_time']['ITEM'], et)
         except Exception, e:
             self.logger.error(e.message)
 
@@ -159,16 +179,31 @@ class BaozunPullSPO_SALES(Service):
     def handle(self):
         try:
             with ServiceLock(self):
+                st = self.kvdb.conn.get(config['last_time']['SPO_SALES'])
+                if st is None:
+                    st = (datetime.now() - timedelta(days=1)).strftime(dt_format)
+                et = datetime.now().strftime(dt_format)
                 executor = BaozunCronExecutor(service=self)
-                executor.run('SPO_SALES')
+                res = executor.run(st, et, config['pageSize'], config['thread_count'], 'SPO_SALES')
+                if res:
+                    self.kvdb.conn.set(config['last_time']['SPO_SALES'], et)
         except Exception, e:
             self.logger.error(e.message)
 
 
 class RangeBasedPull(Service):
+
     def handle(self):
         try:
             with ServiceLock(self):
-                pass
+                req = json.loads(self.request.raw_request)
+                executor = BaozunCronExecutor(service=self)
+                executor.run(
+                    req['starttime'],
+                    req['endtime'],
+                    int(req['pagesize']),
+                    int(req['threadcount']),
+                    req['ordertype']
+                )
         except Exception, e:
             self.logger.error(e.message)
