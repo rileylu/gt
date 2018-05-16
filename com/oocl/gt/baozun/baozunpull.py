@@ -21,7 +21,7 @@ class BaozunPull:
         if order_type not in service:
             raise BaozunPullException("ORDER_TYPE %s IS NOT DEFINED")
         self.service = service[order_type]
-        self.logger = logging.getLogger('baozun_pull')
+        self.logger = logging.getLogger('repreq.%s' % order_type)
 
     @abstractmethod
     def run(self, param):
@@ -46,7 +46,8 @@ class BaozunBatchPull(BaozunPull):
         failed = []
         msgs = []
         for p in param['pages']:
-            self.logger.info('<startTime:%s , endTime:%s , page:%d , pageSize:%d>'%(param['startTime'],param['endTime'],p,param['pageSize']))
+            self.logger.info('<startTime:%s , endTime:%s , page:%d , pageSize:%d>' % (
+                param['startTime'], param['endTime'], p, param['pageSize']))
             (req, rep) = self.service(startTime=param['startTime'], endTime=param['endTime'], page=int(p),
                                       pageSize=param['pageSize'])
             rep_json = json.loads(rep)
