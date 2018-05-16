@@ -23,6 +23,7 @@ class BaozunPushExecutor(Service):
         baozunWS = BaozunWebService(url=config['url'], cus=config['customer'], key=config['key'], sign=config['sign'])
         bp = BaozunPush(baozunWS, self.request.input.order_type)
         try:
+            self.logger.info("working")
             payload = json.dumps(self.request.payload)
             (req, rep) = bp.run(payload)
             self._write_to_file(datetime.now().strftime(fn_format), self.request.input.order_type, rep)

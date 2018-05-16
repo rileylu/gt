@@ -57,8 +57,9 @@ class BaozunCronExecutor:
         def run(self):
             try:
                 for p in self.pages:
-                    req, rep = self.pull.run(
-                        {'startTime': self.startTime, 'endTime': self.endTime, 'page': p, 'pageSize': self.pageSize})
+                    param = {'startTime': self.startTime, 'endTime': self.endTime, 'page': p, 'pageSize': self.pageSize}
+                    self.service.logger.info(json.dumps(param))
+                    req, rep = self.pull.run(param)
                     self._call_dmtp(uri=config['dmtpUrl'][self.orderType], data=rep)
                     self._write_to_file(self.startTime, self.endTime, p, self.orderType, rep)
             except Exception, e:
@@ -100,7 +101,7 @@ class BaozunCronExecutor:
                 ttlPages = int(ceil(float(total) / pageSize))
                 s = int(floor(float(ttlPages) / thread_count))
                 rg = range(1, ttlPages, s)
-                rg.append(ttlPages+1)
+                rg.append(ttlPages + 1)
                 i = 1
                 tds = []
                 while i < len(rg):
